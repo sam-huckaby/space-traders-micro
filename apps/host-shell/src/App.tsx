@@ -100,7 +100,7 @@ function Shell() {
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-slate-950 text-slate-100 md:grid-cols-[260px_1fr]">
+    <div className="grid h-screen min-h-[100dvh] grid-cols-1 overflow-hidden bg-slate-950 text-slate-100 md:grid-cols-[260px_1fr]">
       <aside className="border-b border-slate-800 bg-slate-950/90 p-4 md:border-r md:border-b-0">
         <div className="mb-4 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-3 py-2">
           <div className="text-xs uppercase tracking-widest text-cyan-300">SpaceTraders</div>
@@ -137,16 +137,18 @@ function Shell() {
         ) : null}
       </aside>
 
-      <main className="p-4 md:p-6">
-        <Card className="min-h-[calc(100vh-2rem)]">
-          <CardContent className="p-4 md:p-6">
-          <Routes>
-            <Route path="/" element={hasToken ? <Navigate to="/fleet" /> : <Navigate to="/session" />} />
-            {remotes.flatMap((m, i) =>
-              m.routes.map((r) => <Route key={`${i}:${r.path}`} path={r.path} element={r.element} />)
-            )}
-            <Route path="*" element={<div className="text-slate-300">Not found</div>} />
-          </Routes>
+      <main className="min-h-0 overflow-hidden p-4 md:p-6">
+        <Card className="h-full min-h-0 overflow-hidden">
+          <CardContent className="h-full min-h-0 p-4 md:p-6">
+            <div className="h-full min-h-0 overflow-auto">
+              <Routes>
+                <Route path="/" element={hasToken ? <Navigate to="/fleet" /> : <Navigate to="/session" />} />
+                {remotes.flatMap((m, i) =>
+                  m.routes.map((r) => <Route key={`${i}:${r.path}`} path={r.path} element={r.element} />)
+                )}
+                <Route path="*" element={<div className="text-slate-300">Not found</div>} />
+              </Routes>
+            </div>
           </CardContent>
         </Card>
       </main>

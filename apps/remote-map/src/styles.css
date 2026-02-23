@@ -1,7 +1,15 @@
 @import "tailwindcss";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
 
 @theme {
   --font-sans: "Sora", "IBM Plex Sans", "Segoe UI", sans-serif;
+  --color-radar-bg: #04130d;
+  --color-radar-bg-soft: #0a2318;
+  --color-radar-line: #1b5f41;
+  --color-radar-line-soft: #11412d;
+  --color-radar-glow: #56f3a7;
+  --color-radar-text: #d7ffee;
+  --color-radar-muted: #8dc7ac;
 }
 
 @layer base {
@@ -14,15 +22,46 @@
 }
 
 @layer components {
-  .deck-panel {
-    @apply rounded-xl border border-slate-700 bg-slate-900/85 shadow-xl backdrop-blur;
+  .map-shell {
+    @apply grid h-full min-h-0 grid-cols-[minmax(0,1fr)_300px] gap-4 overflow-hidden;
+  }
+
+  .map-detail-pane {
+    background:
+      linear-gradient(165deg, rgb(7 24 18 / 92%) 0%, rgb(4 15 11 / 96%) 100%),
+      radial-gradient(circle at 80% 0%, rgb(86 243 167 / 20%) 0%, transparent 35%);
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+    @apply h-full min-h-0 rounded-xl border border-emerald-300/25 p-4 shadow-xl;
+  }
+
+  .map-detail-title {
+    color: var(--color-radar-text);
+    @apply text-lg font-semibold tracking-wide;
+  }
+
+  .map-detail-label {
+    color: var(--color-radar-muted);
+    @apply text-xs uppercase tracking-[0.18em];
+  }
+
+  .map-detail-value {
+    color: var(--color-radar-text);
+    @apply text-sm;
   }
 
   .deck-map {
-    @apply rounded-xl border border-slate-700 bg-slate-950/90 shadow-inner;
+    background:
+      radial-gradient(circle at 50% 50%, rgb(11 45 30 / 55%) 0%, rgb(3 14 10 / 98%) 72%),
+      linear-gradient(180deg, rgb(8 27 19 / 98%) 0%, rgb(3 12 9 / 100%) 100%);
+    box-shadow:
+      inset 0 0 0 1px rgb(110 231 183 / 18%),
+      inset 0 0 90px rgb(21 128 61 / 16%);
+    @apply rounded-xl border border-emerald-300/30;
   }
 
-  .deck-chip {
-    @apply inline-flex items-center rounded-full border border-amber-400/40 bg-amber-200/10 px-2 py-0.5 text-xs text-amber-100;
+  .map-chip {
+    @apply inline-flex items-center rounded-full border border-emerald-300/35 bg-emerald-200/10 px-2 py-0.5 text-xs text-emerald-100;
   }
 }

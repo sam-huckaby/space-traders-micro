@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
 
 @theme {
   --font-sans: "Sora", "IBM Plex Sans", "Segoe UI", sans-serif;
