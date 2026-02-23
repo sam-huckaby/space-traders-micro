@@ -23,16 +23,16 @@
 
 @layer components {
   .map-shell {
-    @apply grid h-full min-h-0 grid-cols-[minmax(0,1fr)_300px] gap-4 overflow-hidden;
+    @apply grid h-full min-h-0 grid-cols-[minmax(0,1fr)_280px] gap-4 overflow-hidden;
   }
 
   .map-detail-pane {
     background:
       linear-gradient(165deg, rgb(7 24 18 / 92%) 0%, rgb(4 15 11 / 96%) 100%),
       radial-gradient(circle at 80% 0%, rgb(86 243 167 / 20%) 0%, transparent 35%);
-    width: 300px;
-    min-width: 300px;
-    max-width: 300px;
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
     @apply h-full min-h-0 rounded-xl border border-emerald-300/25 p-4 shadow-xl;
   }
 

@@ -1,7 +1,7 @@
 import type { HostApi } from "@deck/contracts";
 import { createHttpClient } from "@deck/http";
 
-const BASE_URL = "https://api.spacetraders.io/v2";
+const BASE_URL = "[REDACTED]";
 const PAGE_LIMIT = 20;
 const MAX_PAGES = 5;
 
@@ -40,6 +40,29 @@ export type MapWaypoint = {
   modifiers?: MapWaypointModifier[];
   chart?: { waypointSymbol?: string; submittedBy?: string; submittedOn?: string };
   isUnderConstruction?: boolean;
+};
+
+export type MapShipNav = {
+  status: string;
+  systemSymbol: string;
+  waypointSymbol: string;
+  flightMode?: string;
+  route?: {
+    destination?: { symbol?: string; type?: string; systemSymbol?: string; x?: number; y?: number };
+    arrival?: string;
+  };
+};
+
+export type MapShip = {
+  symbol: string;
+  nav: MapShipNav;
+};
+
+export type MapNavigateShipResponse = {
+  data: {
+    nav?: MapShipNav;
+    events?: Array<{ type?: string; symbol?: string }>;
+  };
 };
 
 type Paginated<T> = {
@@ -91,6 +114,16 @@ export function createMapApi(getHost: () => HostApi | null, onBackoffChange: (ac
         signal
       );
       return { data };
+    },
+    async listShips(signal?: AbortSignal) {
+      const data = await getAllPages<MapShip>((page) => `/my/ships?page=${page}&limit=${PAGE_LIMIT}`, signal);
+      return { data };
+    },
+    navigateShip(shipSymbol: string, waypointSymbol: string) {
+      return http.request<MapNavigateShipResponse>(`/my/ships/${encodeURIComponent(shipSymbol)}/navigate`, {
+        method: "POST",
+        body: JSON.stringify({ waypointSymbol })
+      });
     }
   };
 }
