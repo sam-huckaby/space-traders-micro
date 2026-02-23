@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Sora", "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: #e2e8f0;
+    background: transparent;
+  }
+}
+
+@layer components {
+  .deck-panel {
+    @apply rounded-xl border border-slate-700 bg-slate-900/85 shadow-xl backdrop-blur;
+  }
+
+  .deck-btn {
+    @apply rounded-md border border-cyan-300/40 bg-cyan-400/20 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/30 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .deck-chip {
+    @apply inline-flex items-center rounded-full border border-slate-600 px-2 py-0.5 text-xs text-slate-300;
+  }
+}

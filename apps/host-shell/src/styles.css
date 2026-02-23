@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Sora", "IBM Plex Sans", "Segoe UI", sans-serif;
+  --color-deck-ink: #e2e8f0;
+  --color-deck-muted: #94a3b8;
+  --color-deck-panel: #111827;
+  --color-deck-panel-soft: #1f2937;
+  --color-deck-border: #334155;
+  --color-deck-accent: #22d3ee;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background:
+      radial-gradient(circle at 15% 10%, #1e293b 0%, transparent 45%),
+      radial-gradient(circle at 85% 90%, #0f172a 0%, transparent 50%),
+      #020617;
+    color: var(--color-deck-ink);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .deck-panel {
+    @apply rounded-xl border border-slate-700 bg-slate-900/85 shadow-xl backdrop-blur;
+  }
+
+  .deck-btn {
+    @apply rounded-md border border-cyan-300/40 bg-cyan-400/20 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/30 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .deck-input {
+    @apply w-full rounded-md border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 focus:border-cyan-300 focus:outline-none;
+  }
+}

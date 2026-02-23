@@ -1,0 +1,33 @@
+# If you can't accept me at my
+node_modules/
+
+# You don't deserve me at my
+.turbo/
+
+
+apps/**/dist/
+apps/**/.turbo/
+packages/**/dist/
+
+# Vite / MF temp artifacts
+**/.vite/
+**/.cache/
+**/.mf-temp/
+**/.__mf__temp/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local editor/OS files
+.DS_Store
+.idea/
+.vscode/

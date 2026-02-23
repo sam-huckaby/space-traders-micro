@@ -1,0 +1,19 @@
+{
+  "name": "spacetraders-command-deck",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "clean-dev": "bash ./scripts/clean-dev.sh",
+    "dev": "turbo dev --dangerously-disable-package-manager-check",
+    "build": "turbo build --dangerously-disable-package-manager-check",
+    "lint": "turbo lint --dangerously-disable-package-manager-check",
+    "typecheck": "turbo typecheck --dangerously-disable-package-manager-check"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "pnpm": "^9.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  }
+}
