@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { HostApi } from "@deck/contracts";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Badge, Button } from "@deck/ui";
 import { useParams, useSearchParams } from "react-router-dom";
 import { createMapApi } from "../api";
@@ -11,13 +11,64 @@ type Viewport = { tx: number; ty: number; scale: number };
 const INITIAL_VIEW: Viewport = { tx: 400, ty: 300, scale: 1 };
 const RINGS = [70, 140, 220, 320, 430, 560, 720, 900, 1100];
 
+function systemFromWaypoint(waypointSymbol: string | undefined) {
+  if (!waypointSymbol) return "";
+
+  const parts = waypointSymbol.split("-");
+  if (parts.length < 2) return "";
+
+  return parts.slice(0, -1).join("-");
+}
+
+function getErrorMessage(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return "Unable to send ship to waypoint.";
+  }
+
+  const candidate = error as {
+    message?: unknown;
+    body?: unknown;
+  };
+
+  if (typeof candidate.body === "object" && candidate.body !== null) {
+    const body = candidate.body as {
+      message?: unknown;
+      error?: { message?: unknown };
+    };
+    if (typeof body.error?.message === "string" && body.error.message.trim().length > 0) {
+      return body.error.message;
+    }
+    if (typeof body.message === "string" && body.message.trim().length > 0) {
+      return body.message;
+    }
+  }
+
+  if (typeof candidate.message === "string" && candidate.message.trim().length > 0) {
+    return candidate.message;
+  }
+
+  return "Unable to send ship to waypoint.";
+}
+
 export default function SystemPage({ getHost }: { getHost: () => HostApi | null }) {
-  const { systemSymbol = "" } = useParams();
+  const { systemSymbol: routeSystemSymbol } = useParams();
   const [search] = useSearchParams();
-  const focusWaypoint = search.get("focusWaypoint");
   const host = getHost();
+  const focusWaypoint = search.get("focusWaypoint");
+  const systemFromQuery = search.get("system");
+  const systemFromHq = systemFromWaypoint(host?.getSession().agent?.headquarters);
+  const systemSymbol = useMemo(() => {
+    const candidates = [routeSystemSymbol, systemFromQuery, systemFromHq];
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim().length > 0) {
+        return candidate.trim();
+      }
+    }
+    return "";
+  }, [routeSystemSymbol, systemFromHq, systemFromQuery]);
   const [backoffActive, setBackoffActive] = useState(false);
   const [selected, setSelected] = useState<string | null>(focusWaypoint);
+  const [selectedShipSymbol, setSelectedShipSymbol] = useState("");
   const [view, setView] = useState<Viewport>(INITIAL_VIEW);
   const api = useMemo(() => createMapApi(getHost, setBackoffActive), [getHost]);
 
@@ -29,6 +80,12 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
     queryKey: ["waypoints", systemSymbol],
     queryFn: ({ signal }) => api.listWaypoints(systemSymbol, signal),
     enabled: !!systemSymbol && !!host?.getSession().token
+  });
+
+  const ships = useQuery({
+    queryKey: ["map-ships"],
+    queryFn: ({ signal }) => api.listShips(signal),
+    enabled: !!host?.getSession().token
   });
 
   useEffect(() => {
@@ -48,6 +105,46 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
   }, [selected, waypoints.data]);
 
   const selectedWaypoint = waypoints.data?.data.find((waypoint) => waypoint.symbol === selected) ?? null;
+  const shipsInSystem = useMemo(
+    () => ships.data?.data.filter((ship) => ship.nav.systemSymbol === systemSymbol) ?? [],
+    [ships.data, systemSymbol]
+  );
+  const selectedShip = useMemo(
+    () => shipsInSystem.find((ship) => ship.symbol === selectedShipSymbol) ?? null,
+    [selectedShipSymbol, shipsInSystem]
+  );
+
+  useEffect(() => {
+    if (!shipsInSystem.length) {
+      setSelectedShipSymbol("");
+      return;
+    }
+
+    if (!shipsInSystem.some((ship) => ship.symbol === selectedShipSymbol)) {
+      setSelectedShipSymbol(shipsInSystem[0].symbol);
+    }
+  }, [selectedShipSymbol, shipsInSystem]);
+
+  const sendShip = useMutation({
+    mutationFn: async () => {
+      if (!selectedWaypoint) {
+        throw new Error("Select a waypoint first.");
+      }
+      if (!selectedShipSymbol) {
+        throw new Error("Select a ship first.");
+      }
+      return api.navigateShip(selectedShipSymbol, selectedWaypoint.symbol);
+    },
+    onSuccess: (response) => {
+      const destination =
+        response.data?.nav?.route?.destination?.symbol ?? response.data?.nav?.waypointSymbol ?? selectedWaypoint?.symbol;
+      const destinationLabel = destination ?? "the selected waypoint";
+      host?.toast(`${selectedShipSymbol} is navigating to ${destinationLabel}.`, "success");
+    },
+    onError: (error) => {
+      host?.toast(getErrorMessage(error), "error");
+    }
+  });
 
   function onWheel(e: React.WheelEvent<SVGSVGElement>) {
     e.preventDefault();
@@ -62,6 +159,18 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
 
   if (!host?.getSession().token) {
     return <div className="text-slate-300">Go to Session and set a token.</div>;
+  }
+
+  if (!systemSymbol) {
+    return (
+      <div className="space-y-3">
+        <div className="text-slate-200">No default system was found for this session.</div>
+        <div className="text-sm text-slate-400">
+          Open the galaxy map and pick a system, or add <code className="rounded bg-slate-800 px-1.5 py-0.5">?system=SYS</code> to the URL.
+        </div>
+        <Button onClick={() => host.navigate("/map/galaxy")}>Open galaxy map</Button>
+      </div>
+    );
   }
 
   return (
@@ -167,6 +276,52 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
                     <div className="map-detail-label">Y</div>
                     <div className="map-detail-value mt-1">{selectedWaypoint.y}</div>
                   </div>
+                </div>
+
+                <div className="space-y-2 rounded-md border border-emerald-300/20 bg-emerald-300/5 p-3">
+                  <div className="map-detail-label">Send ship to this waypoint (optional)</div>
+                  {ships.isLoading ? <div className="map-detail-value">Loading ships...</div> : null}
+                  {ships.isError ? <div className="text-sm text-rose-300">Failed to load ships.</div> : null}
+
+                  {!ships.isLoading && !ships.isError ? (
+                    shipsInSystem.length > 0 ? (
+                      <>
+                        <select
+                          className="w-full rounded-md border border-emerald-300/35 bg-emerald-950/60 px-2 py-1.5 text-sm text-emerald-50 outline-none focus:border-emerald-200/75"
+                          value={selectedShipSymbol}
+                          onChange={(event) => setSelectedShipSymbol(event.target.value)}
+                        >
+                          {shipsInSystem.map((ship) => (
+                            <option key={ship.symbol} value={ship.symbol}>
+                              {ship.symbol}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedShip ? (
+                          <div className="text-xs text-emerald-100/75">
+                            Status: {selectedShip.nav.status} | Current waypoint: {selectedShip.nav.waypointSymbol}
+                          </div>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          disabled={
+                            sendShip.isPending ||
+                            !selectedShipSymbol ||
+                            selectedShip?.nav.waypointSymbol === selectedWaypoint.symbol
+                          }
+                          onClick={() => sendShip.mutate()}
+                        >
+                          {selectedShip?.nav.waypointSymbol === selectedWaypoint.symbol
+                            ? "Ship already at destination"
+                            : sendShip.isPending
+                              ? "Sending..."
+                              : `Send ${selectedShipSymbol} here`}
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="map-detail-value">No ships currently in {systemSymbol}.</div>
+                    )
+                  ) : null}
                 </div>
 
                 <div>

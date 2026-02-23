@@ -18,7 +18,8 @@ export default {
   },
   navItems: [{ key: "map", label: "Map", to: "/map", order: 20 }],
   routes: [
-    { path: "/map", element: withQuery(<GalaxyPage getHost={() => host} />) },
+    { path: "/map", element: withQuery(<SystemPage getHost={() => host} />) },
+    { path: "/map/galaxy", element: withQuery(<GalaxyPage getHost={() => host} />) },
     { path: "/map/system/:systemSymbol", element: withQuery(<SystemPage getHost={() => host} />) }
   ]
 } satisfies RemoteModule;
