@@ -1,17 +1,23 @@
 import React, { useMemo, useState } from "react";
 import type { HostApi } from "@deck/contracts";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input } from "@deck/ui";
 import { useSearchParams } from "react-router-dom";
 import { createFleetApi, type FleetShip } from "../api";
 
 export default function FleetPage({ getHost }: { getHost: () => HostApi | null }) {
   const host = getHost();
+  const queryClient = useQueryClient();
   const [backoffActive, setBackoffActive] = useState(false);
   const api = useMemo(() => createFleetApi(getHost, setBackoffActive), [getHost]);
   const [searchParams, setSearchParams] = useSearchParams();
   const systemFilter = (searchParams.get("system") ?? "").trim();
   const [query, setQuery] = useState("");
+  const [purchaseShipType, setPurchaseShipType] = useState("");
+  const [purchaseWaypointSymbol, setPurchaseWaypointSymbol] = useState("");
+  const [purchaseResult, setPurchaseResult] = useState<unknown>(null);
+  const [purchaseError, setPurchaseError] = useState<unknown>(null);
+  const [purchaseRunning, setPurchaseRunning] = useState(false);
 
   const ships = useQuery({
     queryKey: ["ships"],
@@ -51,6 +57,32 @@ export default function FleetPage({ getHost }: { getHost: () => HostApi | null }
 
   if (!host?.getSession().token) {
     return <div className="text-slate-300">Go to Session and set a token.</div>;
+  }
+
+  function safeJson(value: unknown) {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
+  async function purchaseShip() {
+    const shipType = purchaseShipType.trim();
+    const waypointSymbol = purchaseWaypointSymbol.trim();
+    if (!shipType || !waypointSymbol) return;
+
+    setPurchaseRunning(true);
+    setPurchaseError(null);
+    try {
+      const res = await api.purchaseShip({ shipType, waypointSymbol });
+      setPurchaseResult(res);
+      await queryClient.invalidateQueries({ queryKey: ["ships"] });
+    } catch (e) {
+      setPurchaseError(e);
+    } finally {
+      setPurchaseRunning(false);
+    }
   }
 
   function badgeVariantForStatus(status: string | undefined) {
@@ -128,6 +160,33 @@ export default function FleetPage({ getHost }: { getHost: () => HostApi | null }
         </div>
       </div>
 
+      <details className="rounded-xl bg-slate-900/60 p-4 shadow-none">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-200">Purchase ship</summary>
+        <div className="mt-3 grid gap-3">
+          <div className="grid gap-2 md:grid-cols-2">
+            <Input value={purchaseShipType} onChange={(e) => setPurchaseShipType(e.target.value)} placeholder="Ship type (e.g. SHIP_MINING_DRONE)" />
+            <Input value={purchaseWaypointSymbol} onChange={(e) => setPurchaseWaypointSymbol(e.target.value)} placeholder="Waypoint symbol (shipyard)" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={purchaseShip} disabled={purchaseRunning || !purchaseShipType.trim() || !purchaseWaypointSymbol.trim()}>
+              {purchaseRunning ? "Purchasing..." : "Purchase"}
+            </Button>
+            <div className="text-sm text-slate-400">Requires a shipyard at the waypoint.</div>
+          </div>
+
+          {purchaseError ? (
+            <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-rose-950/30 p-3 text-xs text-rose-200">
+              {safeJson(purchaseError)}
+            </pre>
+          ) : null}
+          {purchaseResult ? (
+            <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-950/30 p-3 text-xs text-slate-200">
+              {safeJson(purchaseResult)}
+            </pre>
+          ) : null}
+        </div>
+      </details>
+
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <Input
           value={query}
@@ -136,7 +195,7 @@ export default function FleetPage({ getHost }: { getHost: () => HostApi | null }
         />
         <div className="flex flex-wrap items-center gap-2">
           {systemFilter ? (
-            <button className="deck-chip cursor-pointer hover:border-slate-400" onClick={clearSystemFilter}>
+            <button className="deck-chip cursor-pointer" onClick={clearSystemFilter}>
               System: <span className="ml-1 font-semibold text-slate-100">{systemFilter}</span> <span className="ml-2">×</span>
             </button>
           ) : null}
@@ -150,7 +209,7 @@ export default function FleetPage({ getHost }: { getHost: () => HostApi | null }
           <Card
             key={ship.symbol}
             onClick={() => openShip(ship)}
-            className="cursor-pointer p-0 text-left transition hover:border-cyan-300/40 hover:bg-slate-800/90"
+            className="cursor-pointer border-0 bg-slate-900/70 p-0 text-left shadow-none transition hover:bg-slate-800/80"
           >
             <CardHeader className="pb-2">
               <div className="flex flex-wrap items-start justify-between gap-3">

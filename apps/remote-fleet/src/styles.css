@@ -24,6 +24,6 @@
   }
 
   .deck-chip {
-    @apply inline-flex items-center rounded-full border border-slate-600 px-2 py-0.5 text-xs text-slate-300;
+    @apply inline-flex items-center rounded-full bg-slate-950/30 px-2 py-0.5 text-xs text-slate-200 hover:bg-slate-950/45;
   }
 }
