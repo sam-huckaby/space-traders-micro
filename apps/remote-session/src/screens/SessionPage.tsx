@@ -3,8 +3,8 @@ import type { HostApi } from "@deck/contracts";
 import { createHttpClient } from "@deck/http";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@deck/ui";
 
-const BASE_URL = "https://api.spacetraders.io/v2";
-const PROXY_URL = import.meta.env.VITE_BACKEND_PROXY_URL ?? "http://localhost:5180";
+const BASE_URL = "https://api.spacetraders.io/v2"; // pragma: allowlist secret
+const PROXY_URL = import.meta.env.VITE_BACKEND_PROXY_URL ?? "[REDACTED]";
 
 type AgentResponse = {
   data: {

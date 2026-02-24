@@ -1,7 +1,7 @@
 import type { HostApi } from "@deck/contracts";
 import { createHttpClient } from "@deck/http";
 
-const BASE_URL = "https://api.spacetraders.io/v2";
+const BASE_URL = "https://api.spacetraders.io/v2"; // pragma: allowlist secret
 
 export function createContractsApi(
   getHost: () => HostApi | null,
