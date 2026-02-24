@@ -26,8 +26,13 @@ export function createHttpClient(opts: HttpClientOptions) {
 
     while (true) {
       const token = opts.getToken();
+      const method = (init?.method ?? "GET").toUpperCase();
+      const shouldSendEmptyJsonBody =
+        (method === "POST" || method === "PUT" || method === "PATCH") && typeof init?.body === "undefined";
+
       const res = await fetch(`${opts.baseUrl}${path}`, {
         ...init,
+        ...(shouldSendEmptyJsonBody ? { body: "{}" } : {}),
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
