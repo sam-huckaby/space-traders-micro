@@ -1,7 +1,7 @@
 import type { HostApi } from "@deck/contracts";
 import { createHttpClient } from "@deck/http";
 
-const BASE_URL = "[REDACTED]";
+const BASE_URL = "https://api.spacetraders.io/v2"; // pragma: allowlist secret
 const PAGE_LIMIT = 20;
 const MAX_PAGES = 5;
 

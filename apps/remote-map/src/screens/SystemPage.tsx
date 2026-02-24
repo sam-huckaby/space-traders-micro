@@ -68,12 +68,14 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
   }, [routeSystemSymbol, systemFromHq, systemFromQuery]);
   const [backoffActive, setBackoffActive] = useState(false);
   const [selected, setSelected] = useState<string | null>(focusWaypoint);
+  const [pendingCenter, setPendingCenter] = useState<string | null>(focusWaypoint);
   const [selectedShipSymbol, setSelectedShipSymbol] = useState("");
   const [view, setView] = useState<Viewport>(INITIAL_VIEW);
   const api = useMemo(() => createMapApi(getHost, setBackoffActive), [getHost]);
 
   useEffect(() => {
     setSelected(focusWaypoint);
+    setPendingCenter(focusWaypoint);
   }, [focusWaypoint]);
 
   const waypoints = useQuery({
@@ -105,6 +107,26 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
   }, [selected, waypoints.data]);
 
   const selectedWaypoint = waypoints.data?.data.find((waypoint) => waypoint.symbol === selected) ?? null;
+
+  useEffect(() => {
+    if (!pendingCenter || !waypoints.data?.data.length) return;
+    if (waypoints.data.data.some((waypoint) => waypoint.symbol === pendingCenter)) return;
+    setPendingCenter(null);
+  }, [pendingCenter, waypoints.data]);
+
+  useEffect(() => {
+    if (!pendingCenter || !selectedWaypoint) return;
+    if (selectedWaypoint.symbol !== pendingCenter) return;
+
+    setView((v) => {
+      const scale = v.scale;
+      const px = selectedWaypoint.x;
+      const py = -selectedWaypoint.y;
+      return { ...v, tx: 400 - px * scale, ty: 300 - py * scale };
+    });
+    setPendingCenter(null);
+  }, [pendingCenter, selectedWaypoint]);
+
   const shipsInSystem = useMemo(
     () => ships.data?.data.filter((ship) => ship.nav.systemSymbol === systemSymbol) ?? [],
     [ships.data, systemSymbol]
