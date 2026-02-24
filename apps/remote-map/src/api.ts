@@ -75,6 +75,50 @@ type Paginated<T> = {
   };
 };
 
+type ApiData<T> = {
+  data: T;
+};
+
+export type SystemMarket = {
+  symbol: string;
+  exports?: Array<{ symbol: string; name?: string; description?: string }>;
+  imports?: Array<{ symbol: string; name?: string; description?: string }>;
+  exchange?: Array<{ symbol: string; name?: string; description?: string }>;
+  tradeGoods?: Array<{
+    symbol: string;
+    type?: string;
+    tradeVolume?: number;
+    supply?: string;
+    purchasePrice?: number;
+    sellPrice?: number;
+  }>;
+};
+
+export type SystemShipyard = {
+  symbol: string;
+  shipTypes?: Array<{ type: string }>;
+  ships?: unknown[];
+  modificationsFee?: number;
+};
+
+export type SystemJumpGate = {
+  symbol: string;
+  connections?: string[];
+};
+
+export type SystemConstruction = {
+  symbol: string;
+  materials?: Array<{ tradeSymbol: string; required: number; fulfilled: number }>;
+  isComplete?: boolean;
+};
+
+export type SupplyConstructionResponse = {
+  data: {
+    construction: SystemConstruction;
+    cargo: unknown;
+  };
+};
+
 export function createMapApi(getHost: () => HostApi | null, onBackoffChange: (active: boolean) => void) {
   const http = createHttpClient({
     baseUrl: BASE_URL,
@@ -108,12 +152,82 @@ export function createMapApi(getHost: () => HostApi | null, onBackoffChange: (ac
       const data = await getAllPages<MapSystem>((page) => `/systems?page=${page}&limit=${PAGE_LIMIT}`, signal);
       return { data };
     },
+    listSystemsPage(opts: { page: number; limit: number }, signal?: AbortSignal) {
+      const page = Math.max(1, Math.floor(opts.page));
+      const limit = Math.max(1, Math.min(20, Math.floor(opts.limit)));
+      return http.request<Paginated<MapSystem>>(`/systems?page=${page}&limit=${limit}`, { signal });
+    },
+    getSystem(systemSymbol: string, signal?: AbortSignal) {
+      return http.request<ApiData<MapSystem>>(`/systems/${encodeURIComponent(systemSymbol)}`, { signal });
+    },
     async listWaypoints(systemSymbol: string, signal?: AbortSignal) {
       const data = await getAllPages<MapWaypoint>(
         (page) => `/systems/${encodeURIComponent(systemSymbol)}/waypoints?page=${page}&limit=${PAGE_LIMIT}`,
         signal
       );
       return { data };
+    },
+    listWaypointsPage(
+      systemSymbol: string,
+      opts: { page: number; limit: number; type?: string; traits?: string[] },
+      signal?: AbortSignal
+    ) {
+      const page = Math.max(1, Math.floor(opts.page));
+      const limit = Math.max(1, Math.min(20, Math.floor(opts.limit)));
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (typeof opts.type === "string" && opts.type.trim().length > 0) {
+        params.set("type", opts.type.trim());
+      }
+      if (Array.isArray(opts.traits) && opts.traits.length > 0) {
+        for (const trait of opts.traits) {
+          if (typeof trait === "string" && trait.trim().length > 0) {
+            params.append("traits", trait.trim());
+          }
+        }
+      }
+      return http.request<Paginated<MapWaypoint>>(
+        `/systems/${encodeURIComponent(systemSymbol)}/waypoints?${params.toString()}`,
+        { signal }
+      );
+    },
+    getWaypoint(systemSymbol: string, waypointSymbol: string, signal?: AbortSignal) {
+      return http.request<ApiData<MapWaypoint>>(
+        `/systems/${encodeURIComponent(systemSymbol)}/waypoints/${encodeURIComponent(waypointSymbol)}`,
+        { signal }
+      );
+    },
+    getMarket(systemSymbol: string, waypointSymbol: string, signal?: AbortSignal) {
+      return http.request<ApiData<SystemMarket>>(
+        `/systems/${encodeURIComponent(systemSymbol)}/waypoints/${encodeURIComponent(waypointSymbol)}/market`,
+        { signal }
+      );
+    },
+    getShipyard(systemSymbol: string, waypointSymbol: string, signal?: AbortSignal) {
+      return http.request<ApiData<SystemShipyard>>(
+        `/systems/${encodeURIComponent(systemSymbol)}/waypoints/${encodeURIComponent(waypointSymbol)}/shipyard`,
+        { signal }
+      );
+    },
+    getJumpGate(systemSymbol: string, waypointSymbol: string, signal?: AbortSignal) {
+      return http.request<ApiData<SystemJumpGate>>(
+        `/systems/${encodeURIComponent(systemSymbol)}/waypoints/${encodeURIComponent(waypointSymbol)}/jump-gate`,
+        { signal }
+      );
+    },
+    getConstruction(systemSymbol: string, waypointSymbol: string, signal?: AbortSignal) {
+      return http.request<ApiData<SystemConstruction>>(
+        `/systems/${encodeURIComponent(systemSymbol)}/waypoints/${encodeURIComponent(waypointSymbol)}/construction`,
+        { signal }
+      );
+    },
+    supplyConstruction(systemSymbol: string, waypointSymbol: string, body: { shipSymbol: string; tradeSymbol: string; units: number }) {
+      return http.request<SupplyConstructionResponse>(
+        `/systems/${encodeURIComponent(systemSymbol)}/waypoints/${encodeURIComponent(waypointSymbol)}/construction/supply`,
+        {
+          method: "POST",
+          body: JSON.stringify(body)
+        }
+      );
     },
     async listShips(signal?: AbortSignal) {
       const data = await getAllPages<MapShip>((page) => `/my/ships?page=${page}&limit=${PAGE_LIMIT}`, signal);
