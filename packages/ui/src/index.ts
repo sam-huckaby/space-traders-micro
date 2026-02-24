@@ -1,4 +1,5 @@
 export * from "./lib/utils";
+export * from "./lib/variants";
 export * from "./components/alert";
 export * from "./components/badge";
 export * from "./components/button";
