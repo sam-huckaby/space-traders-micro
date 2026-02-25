@@ -37,14 +37,13 @@ const mfConfig: ModuleFederationOptions = {
 };
 
 export default defineConfig(() => {
-  const enableZephyr = process.env.ZEPHYR_ENABLE === "1";
 
   return {
     plugins: [
       react(),
       tailwindcss(),
       federation({ ...mfConfig }),
-      ...(enableZephyr ? withZephyr() : [])
+      withZephyr(),
     ],
     server: { port: 5173, strictPort: true },
     build: {
