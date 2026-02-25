@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch & vite preview --port 5176 --strictPort",
+    "dev": "VITE_REMOTE_BASE=http://localhost:5176/ vite build --watch & VITE_REMOTE_BASE=http://localhost:5176/ vite preview --port 5176 --strictPort",
     "build": "vite build",
     "lint": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit"
