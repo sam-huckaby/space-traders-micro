@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { HostApi } from "@deck/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { Badge, Button } from "@deck/ui";
+import { Badge, Button, Input } from "@deck/ui";
 import { createMapApi } from "../api";
 import { getSystemStyle, systemLegend } from "../mapTheme";
+import { ApiDisclosure, ApiErrorAlert, JsonPreview } from "../components/apiPanels";
 
 type Viewport = { tx: number; ty: number; scale: number };
 
@@ -15,12 +16,20 @@ export default function GalaxyPage({ getHost }: { getHost: () => HostApi | null 
   const [backoffActive, setBackoffActive] = useState(false);
   const [view, setView] = useState<Viewport>(INITIAL_VIEW);
   const [selected, setSelected] = useState<string | null>(null);
+  const [systemsPage, setSystemsPage] = useState(1);
+  const [systemsLimit, setSystemsLimit] = useState(10);
   const api = useMemo(() => createMapApi(getHost, setBackoffActive), [getHost]);
 
   const systems = useQuery({
     queryKey: ["systems"],
     queryFn: ({ signal }) => api.listSystems(signal),
     enabled: !!host?.getSession().token
+  });
+
+  const systemsPaged = useQuery({
+    queryKey: ["systems-paged", systemsPage, systemsLimit],
+    queryFn: ({ signal }) => api.listSystemsPage({ page: systemsPage, limit: systemsLimit }, signal),
+    enabled: false
   });
 
   useEffect(() => {
@@ -40,6 +49,17 @@ export default function GalaxyPage({ getHost }: { getHost: () => HostApi | null 
   }, [selected, systems.data]);
 
   const selectedSystem = systems.data?.data.find((system) => system.symbol === selected) ?? null;
+
+  const systemDetail = useQuery({
+    queryKey: ["system-detail", selectedSystem?.symbol],
+    queryFn: ({ signal }) => {
+      if (!selectedSystem) {
+        throw new Error("Select a system first.");
+      }
+      return api.getSystem(selectedSystem.symbol, signal);
+    },
+    enabled: false
+  });
 
   function onWheel(e: React.WheelEvent<SVGSVGElement>) {
     e.preventDefault();
@@ -187,6 +207,55 @@ export default function GalaxyPage({ getHost }: { getHost: () => HostApi | null 
             ) : (
               <div className="map-detail-value">Select a star system in the map to inspect it.</div>
             )}
+
+            <div className="space-y-2">
+              <div className="map-detail-label">Systems API actions</div>
+
+              <ApiDisclosure title="List systems" subtitle="GET /systems">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Page</div>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={systemsPage}
+                      onChange={(e) => setSystemsPage(Math.max(1, Number(e.target.value) || 1))}
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Limit (max 20)</div>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={systemsLimit}
+                      onChange={(e) => setSystemsLimit(Math.max(1, Math.min(20, Number(e.target.value) || 10)))}
+                    />
+                  </label>
+                </div>
+
+                <Button size="sm" variant="outline" disabled={systemsPaged.isFetching} onClick={() => systemsPaged.refetch()}>
+                  {systemsPaged.isFetching ? "Fetching..." : "Fetch page"}
+                </Button>
+
+                {systemsPaged.isError ? <ApiErrorAlert error={systemsPaged.error} /> : null}
+                {systemsPaged.data ? <JsonPreview data={systemsPaged.data} /> : null}
+              </ApiDisclosure>
+
+              <ApiDisclosure title="Get system" subtitle="GET /systems/{systemSymbol}">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!selectedSystem || systemDetail.isFetching}
+                  onClick={() => systemDetail.refetch()}
+                >
+                  {systemDetail.isFetching ? "Fetching..." : selectedSystem ? `Fetch ${selectedSystem.symbol}` : "Select a system first"}
+                </Button>
+
+                {systemDetail.isError ? <ApiErrorAlert error={systemDetail.error} /> : null}
+                {systemDetail.data ? <JsonPreview data={systemDetail.data} /> : null}
+              </ApiDisclosure>
+            </div>
           </div>
 
           <div className="shrink-0 space-y-1 text-xs text-emerald-200/75">

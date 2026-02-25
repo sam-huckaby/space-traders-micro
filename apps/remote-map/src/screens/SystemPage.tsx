@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { HostApi } from "@deck/contracts";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Badge, Button } from "@deck/ui";
+import { Badge, Button, Input } from "@deck/ui";
 import { useParams, useSearchParams } from "react-router-dom";
 import { createMapApi } from "../api";
 import { getWaypointStyle, waypointLegend } from "../mapTheme";
+import { ApiDisclosure, ApiErrorAlert, JsonPreview, getApiErrorMessage } from "../components/apiPanels";
 
 type Viewport = { tx: number; ty: number; scale: number };
 
@@ -18,36 +19,6 @@ function systemFromWaypoint(waypointSymbol: string | undefined) {
   if (parts.length < 2) return "";
 
   return parts.slice(0, -1).join("-");
-}
-
-function getErrorMessage(error: unknown) {
-  if (typeof error !== "object" || error === null) {
-    return "Unable to send ship to waypoint.";
-  }
-
-  const candidate = error as {
-    message?: unknown;
-    body?: unknown;
-  };
-
-  if (typeof candidate.body === "object" && candidate.body !== null) {
-    const body = candidate.body as {
-      message?: unknown;
-      error?: { message?: unknown };
-    };
-    if (typeof body.error?.message === "string" && body.error.message.trim().length > 0) {
-      return body.error.message;
-    }
-    if (typeof body.message === "string" && body.message.trim().length > 0) {
-      return body.message;
-    }
-  }
-
-  if (typeof candidate.message === "string" && candidate.message.trim().length > 0) {
-    return candidate.message;
-  }
-
-  return "Unable to send ship to waypoint.";
 }
 
 export default function SystemPage({ getHost }: { getHost: () => HostApi | null }) {
@@ -71,6 +42,13 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
   const [pendingCenter, setPendingCenter] = useState<string | null>(focusWaypoint);
   const [selectedShipSymbol, setSelectedShipSymbol] = useState("");
   const [view, setView] = useState<Viewport>(INITIAL_VIEW);
+  const [waypointsPage, setWaypointsPage] = useState(1);
+  const [waypointsLimit, setWaypointsLimit] = useState(10);
+  const [waypointsType, setWaypointsType] = useState("");
+  const [waypointsTraits, setWaypointsTraits] = useState("");
+  const [supplyShipSymbol, setSupplyShipSymbol] = useState("");
+  const [supplyTradeSymbol, setSupplyTradeSymbol] = useState("");
+  const [supplyUnits, setSupplyUnits] = useState(1);
   const api = useMemo(() => createMapApi(getHost, setBackoffActive), [getHost]);
 
   useEffect(() => {
@@ -90,6 +68,28 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
     enabled: !!host?.getSession().token
   });
 
+  const systemDetail = useQuery({
+    queryKey: ["system-detail", systemSymbol],
+    queryFn: ({ signal }) => api.getSystem(systemSymbol, signal),
+    enabled: false
+  });
+
+  const waypointsPaged = useQuery({
+    queryKey: ["waypoints-paged", systemSymbol, waypointsPage, waypointsLimit, waypointsType, waypointsTraits],
+    queryFn: ({ signal }) => {
+      const traits = waypointsTraits
+        .split(/[,\s]+/g)
+        .map((trait) => trait.trim())
+        .filter((trait) => trait.length > 0);
+      return api.listWaypointsPage(
+        systemSymbol,
+        { page: waypointsPage, limit: waypointsLimit, type: waypointsType, traits: traits.length > 0 ? traits : undefined },
+        signal
+      );
+    },
+    enabled: false
+  });
+
   useEffect(() => {
     if (!waypoints.data?.data.length) {
       setSelected(null);
@@ -107,6 +107,61 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
   }, [selected, waypoints.data]);
 
   const selectedWaypoint = waypoints.data?.data.find((waypoint) => waypoint.symbol === selected) ?? null;
+
+  const waypointDetail = useQuery({
+    queryKey: ["waypoint-detail", systemSymbol, selectedWaypoint?.symbol],
+    queryFn: ({ signal }) => {
+      if (!selectedWaypoint) {
+        throw new Error("Select a waypoint first.");
+      }
+      return api.getWaypoint(systemSymbol, selectedWaypoint.symbol, signal);
+    },
+    enabled: false
+  });
+
+  const market = useQuery({
+    queryKey: ["waypoint-market", systemSymbol, selectedWaypoint?.symbol],
+    queryFn: ({ signal }) => {
+      if (!selectedWaypoint) {
+        throw new Error("Select a waypoint first.");
+      }
+      return api.getMarket(systemSymbol, selectedWaypoint.symbol, signal);
+    },
+    enabled: false
+  });
+
+  const shipyard = useQuery({
+    queryKey: ["waypoint-shipyard", systemSymbol, selectedWaypoint?.symbol],
+    queryFn: ({ signal }) => {
+      if (!selectedWaypoint) {
+        throw new Error("Select a waypoint first.");
+      }
+      return api.getShipyard(systemSymbol, selectedWaypoint.symbol, signal);
+    },
+    enabled: false
+  });
+
+  const jumpGate = useQuery({
+    queryKey: ["waypoint-jump-gate", systemSymbol, selectedWaypoint?.symbol],
+    queryFn: ({ signal }) => {
+      if (!selectedWaypoint) {
+        throw new Error("Select a waypoint first.");
+      }
+      return api.getJumpGate(systemSymbol, selectedWaypoint.symbol, signal);
+    },
+    enabled: false
+  });
+
+  const constructionSite = useQuery({
+    queryKey: ["waypoint-construction", systemSymbol, selectedWaypoint?.symbol],
+    queryFn: ({ signal }) => {
+      if (!selectedWaypoint) {
+        throw new Error("Select a waypoint first.");
+      }
+      return api.getConstruction(systemSymbol, selectedWaypoint.symbol, signal);
+    },
+    enabled: false
+  });
 
   useEffect(() => {
     if (!pendingCenter || !waypoints.data?.data.length) return;
@@ -147,6 +202,12 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
     }
   }, [selectedShipSymbol, shipsInSystem]);
 
+  useEffect(() => {
+    if (!supplyShipSymbol && selectedShipSymbol) {
+      setSupplyShipSymbol(selectedShipSymbol);
+    }
+  }, [selectedShipSymbol, supplyShipSymbol]);
+
   const sendShip = useMutation({
     mutationFn: async () => {
       if (!selectedWaypoint) {
@@ -164,7 +225,35 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
       host?.toast(`${selectedShipSymbol} is navigating to ${destinationLabel}.`, "success");
     },
     onError: (error) => {
-      host?.toast(getErrorMessage(error), "error");
+      host?.toast(getApiErrorMessage(error) || "Unable to send ship to waypoint.", "error");
+    }
+  });
+
+  const supplyConstruction = useMutation({
+    mutationFn: async () => {
+      if (!selectedWaypoint) {
+        throw new Error("Select a waypoint first.");
+      }
+
+      const shipSymbol = supplyShipSymbol.trim();
+      const tradeSymbol = supplyTradeSymbol.trim().toUpperCase();
+      const units = Math.max(1, Math.floor(supplyUnits));
+
+      if (!shipSymbol) {
+        throw new Error("Enter a ship symbol.");
+      }
+      if (!tradeSymbol) {
+        throw new Error("Enter a trade symbol.");
+      }
+
+      return api.supplyConstruction(systemSymbol, selectedWaypoint.symbol, { shipSymbol, tradeSymbol, units });
+    },
+    onSuccess: () => {
+      host?.toast("Supplied construction materials.", "success");
+      constructionSite.refetch();
+    },
+    onError: (error) => {
+      host?.toast(getApiErrorMessage(error) || "Unable to supply construction materials.", "error");
     }
   });
 
@@ -344,6 +433,134 @@ export default function SystemPage({ getHost }: { getHost: () => HostApi | null 
                       <div className="map-detail-value">No ships currently in {systemSymbol}.</div>
                     )
                   ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="map-detail-label">Systems API actions</div>
+
+                  <ApiDisclosure title="Get system" subtitle="GET /systems/{systemSymbol}">
+                    <Button size="sm" variant="outline" disabled={systemDetail.isFetching} onClick={() => systemDetail.refetch()}>
+                      {systemDetail.isFetching ? "Fetching..." : `Fetch ${systemSymbol}`}
+                    </Button>
+                    {systemDetail.isError ? <ApiErrorAlert error={systemDetail.error} /> : null}
+                    {systemDetail.data ? <JsonPreview data={systemDetail.data} /> : null}
+                  </ApiDisclosure>
+
+                  <ApiDisclosure title="List waypoints (paged/filterable)" subtitle="GET /systems/{systemSymbol}/waypoints">
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Page</div>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={waypointsPage}
+                          onChange={(e) => setWaypointsPage(Math.max(1, Number(e.target.value) || 1))}
+                        />
+                      </label>
+                      <label className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Limit (max 20)</div>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={waypointsLimit}
+                          onChange={(e) => setWaypointsLimit(Math.max(1, Math.min(20, Number(e.target.value) || 10)))}
+                        />
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Type (optional)</div>
+                        <Input value={waypointsType} onChange={(e) => setWaypointsType(e.target.value)} placeholder="PLANET" />
+                      </label>
+                      <label className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Traits (optional)</div>
+                        <Input
+                          value={waypointsTraits}
+                          onChange={(e) => setWaypointsTraits(e.target.value)}
+                          placeholder="MARKETPLACE, SHIPYARD"
+                        />
+                      </label>
+                    </div>
+
+                    <Button size="sm" variant="outline" disabled={waypointsPaged.isFetching} onClick={() => waypointsPaged.refetch()}>
+                      {waypointsPaged.isFetching ? "Fetching..." : "Fetch page"}
+                    </Button>
+                    {waypointsPaged.isError ? <ApiErrorAlert error={waypointsPaged.error} /> : null}
+                    {waypointsPaged.data ? <JsonPreview data={waypointsPaged.data} /> : null}
+                  </ApiDisclosure>
+
+                  <ApiDisclosure title="Get waypoint" subtitle="GET /systems/{systemSymbol}/waypoints/{waypointSymbol}">
+                    <Button size="sm" variant="outline" disabled={waypointDetail.isFetching} onClick={() => waypointDetail.refetch()}>
+                      {waypointDetail.isFetching ? "Fetching..." : `Fetch ${selectedWaypoint.symbol}`}
+                    </Button>
+                    {waypointDetail.isError ? <ApiErrorAlert error={waypointDetail.error} /> : null}
+                    {waypointDetail.data ? <JsonPreview data={waypointDetail.data} /> : null}
+                  </ApiDisclosure>
+
+                  <ApiDisclosure title="Market" subtitle="GET .../market">
+                    <Button size="sm" variant="outline" disabled={market.isFetching} onClick={() => market.refetch()}>
+                      {market.isFetching ? "Fetching..." : "Fetch market"}
+                    </Button>
+                    {market.isError ? <ApiErrorAlert error={market.error} /> : null}
+                    {market.data ? <JsonPreview data={market.data} /> : null}
+                  </ApiDisclosure>
+
+                  <ApiDisclosure title="Shipyard" subtitle="GET .../shipyard">
+                    <Button size="sm" variant="outline" disabled={shipyard.isFetching} onClick={() => shipyard.refetch()}>
+                      {shipyard.isFetching ? "Fetching..." : "Fetch shipyard"}
+                    </Button>
+                    {shipyard.isError ? <ApiErrorAlert error={shipyard.error} /> : null}
+                    {shipyard.data ? <JsonPreview data={shipyard.data} /> : null}
+                  </ApiDisclosure>
+
+                  <ApiDisclosure title="Jump gate" subtitle="GET .../jump-gate">
+                    <Button size="sm" variant="outline" disabled={jumpGate.isFetching} onClick={() => jumpGate.refetch()}>
+                      {jumpGate.isFetching ? "Fetching..." : "Fetch jump gate"}
+                    </Button>
+                    {jumpGate.isError ? <ApiErrorAlert error={jumpGate.error} /> : null}
+                    {jumpGate.data ? <JsonPreview data={jumpGate.data} /> : null}
+                  </ApiDisclosure>
+
+                  <ApiDisclosure title="Construction site" subtitle="GET .../construction">
+                    <Button size="sm" variant="outline" disabled={constructionSite.isFetching} onClick={() => constructionSite.refetch()}>
+                      {constructionSite.isFetching ? "Fetching..." : "Fetch construction"}
+                    </Button>
+                    {constructionSite.isError ? <ApiErrorAlert error={constructionSite.error} /> : null}
+                    {constructionSite.data ? <JsonPreview data={constructionSite.data} /> : null}
+                  </ApiDisclosure>
+
+                  <ApiDisclosure title="Supply construction" subtitle="POST .../construction/supply">
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="space-y-1 col-span-2">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Ship symbol</div>
+                        <Input value={supplyShipSymbol} onChange={(e) => setSupplyShipSymbol(e.target.value)} placeholder="DODO-1" />
+                      </label>
+                      <label className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Trade symbol</div>
+                        <Input
+                          value={supplyTradeSymbol}
+                          onChange={(e) => setSupplyTradeSymbol(e.target.value)}
+                          placeholder="IRON_ORE"
+                        />
+                      </label>
+                      <label className="space-y-1">
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-emerald-200/70">Units</div>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={supplyUnits}
+                          onChange={(e) => setSupplyUnits(Math.max(1, Number(e.target.value) || 1))}
+                        />
+                      </label>
+                    </div>
+
+                    <Button size="sm" variant="outline" disabled={supplyConstruction.isPending} onClick={() => supplyConstruction.mutate()}>
+                      {supplyConstruction.isPending ? "Supplying..." : "Supply"}
+                    </Button>
+                    {supplyConstruction.isError ? <ApiErrorAlert error={supplyConstruction.error} /> : null}
+                    {supplyConstruction.data ? <JsonPreview data={supplyConstruction.data} /> : null}
+                  </ApiDisclosure>
                 </div>
 
                 <div>
