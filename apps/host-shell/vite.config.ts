@@ -1,39 +1,39 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { federation } from "@module-federation/vite";
 import { withZephyr, type ModuleFederationOptions } from "vite-plugin-zephyr";
 
 const mfConfig: ModuleFederationOptions = {
   name: "host",
   filename: "remoteEntry.js",
   remotes: {
-    session: {
-      name: "session",
-      entry: "http://localhost:5174/remoteEntry.js",
-      type: "module"
+    'session': {
+      name: 'session',
+      entry: 'http://localhost:5174/remoteEntry.js',
+      type: 'module',
     },
-    fleet: {
-      name: "fleet",
-      entry: "http://localhost:5175/remoteEntry.js",
-      type: "module"
+    "fleet": {
+      name: 'fleet',
+      entry: 'http://localhost:5175/remoteEntry.js',
+      type: 'module',
     },
-    map: {
-      name: "map",
-      entry: "http://localhost:5176/remoteEntry.js",
-      type: "module"
+    "map": {
+      name: 'map',
+      entry: 'http://localhost:5176/remoteEntry.js',
+      type: 'module',
     },
-    contracts: {
-      name: "contracts",
-      entry: "http://localhost:5177/remoteEntry.js",
-      type: "module"
-    }
+    "contracts": {
+      name: 'contracts',
+      entry: 'http://localhost:5177/remoteEntry.js',
+      type: 'module',
+    },
   },
   shared: {
     react: { singleton: true },
     "react-dom": { singleton: true },
     "react-router-dom": { singleton: true }
-  }
+  },
+  dts: false,
 };
 
 export default defineConfig(() => {
@@ -42,8 +42,7 @@ export default defineConfig(() => {
     plugins: [
       react(),
       tailwindcss(),
-      federation({ ...mfConfig }),
-      withZephyr(),
+      withZephyr({ mfConfig }),
     ],
     server: { port: 5173, strictPort: true },
     build: {

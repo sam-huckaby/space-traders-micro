@@ -1,5 +1,5 @@
 {
-  "name": "@deck/host-shell",
+  "name": "host-shell",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,14 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "zephyr:dependencies": {
+    "session": "session@workspace:*",
+    "fleet": "fleet@workspace:*",
+    "map": "map@workspace:*",
+    "contracts": "contracts@workspace:*"
+  },
   "dependencies": {
-    "@deck/contracts": "workspace:*",
+    "contracts": "workspace:*",
     "@deck/http": "workspace:*",
     "@deck/ui": "workspace:*",
     "react": "^18.3.0",

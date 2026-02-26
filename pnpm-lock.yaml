@@ -42,15 +42,15 @@ importers:
 
   apps/host-shell:
     dependencies:
-      '@deck/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@deck/http':
         specifier: workspace:*
         version: link:../../packages/http
       '@deck/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      contracts:
+        specifier: workspace:*
+        version: link:../remote-contracts
       react:
         specifier: ^18.3.0
         version: 18.3.1
@@ -235,9 +235,6 @@ importers:
 
   apps/remote-session:
     dependencies:
-      '@deck/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@deck/http':
         specifier: workspace:*
         version: link:../../packages/http
@@ -247,6 +244,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.52.0
         version: 5.90.21(react@18.3.1)
+      contracts:
+        specifier: workspace:*
+        version: link:../remote-contracts
       react:
         specifier: ^18.3.0
         version: 18.3.1

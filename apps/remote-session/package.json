@@ -1,5 +1,5 @@
 {
-  "name": "@deck/remote-session",
+  "name": "session",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@deck/contracts": "workspace:*",
+    "contracts": "workspace:*",
     "@deck/http": "workspace:*",
     "@deck/ui": "workspace:*",
     "@tanstack/react-query": "^5.52.0",

@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { federation } from "@module-federation/vite";
 import { withZephyr, type ModuleFederationOptions } from "vite-plugin-zephyr";
 
 const mfConfig: ModuleFederationOptions = {
@@ -18,16 +17,18 @@ const mfConfig: ModuleFederationOptions = {
 };
 
 export default defineConfig(() => {
-  const remoteBase = process.env.VITE_REMOTE_BASE ?? "/";
-
   return {
-    base: remoteBase,
+    base: "/",
     plugins: [
       react(),
       tailwindcss(),
-      federation({ ...mfConfig }),
-      withZephyr(),
+      withZephyr({ mfConfig }),
     ],
+    experimental: {
+      renderBuiltUrl() {
+        return { relative: true };
+      },
+    },
     server: { port: 5174, strictPort: true },
     build: { target: "chrome89" }
   };
