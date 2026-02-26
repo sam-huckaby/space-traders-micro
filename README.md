@@ -9,7 +9,7 @@ Microfrontend command deck for SpaceTraders built with Vite Module Federation.
 - Fleet remote: `http://localhost:5175`
 - Map remote: `http://localhost:5176`
 - Contracts remote: `http://localhost:5177`
-- Backend proxy: `http://localhost:5180`
+- Backend proxy: `http://localhost:5180` (IN DEVELOPMENT)
 
 All app servers use strict ports (`strictPort: true`) so federation URLs stay stable.
 
@@ -39,6 +39,8 @@ cp .env.example .env
 
 Set `SPACETRADERS_ACCOUNT_TOKEN` in `.env`. The backend proxy uses this token to register new agents without exposing it in the browser.
 
+You will need to register with [SpaceTraders.io](https://my.spacetraders.io/) in order to get an account token.
+
 ## Run in dev
 
 ```bash
@@ -47,18 +49,6 @@ corepack pnpm dev
 
 This starts host + remotes through Turbo.
 Remotes run as `vite build --watch` + `vite preview`, so the first startup may take a few extra seconds.
-
-Remote dev scripts set `VITE_REMOTE_BASE` per remote (`5174-5177`) so chunk and CSS preload URLs resolve to each remote origin instead of the host origin.
-
-## Zephyr plugin mode
-
-The Vite Zephyr plugin is wired in all federation configs, but is opt-in for local runs.
-
-```bash
-ZEPHYR_ENABLE=1 corepack pnpm dev
-```
-
-Without Zephyr auth/git setup, keep `ZEPHYR_ENABLE` unset (default) to avoid interactive auth prompts.
 
 ## Build
 
@@ -85,11 +75,6 @@ corepack pnpm typecheck
     - `http://localhost:5175/remoteEntry.js`
     - `http://localhost:5176/remoteEntry.js`
     - `http://localhost:5177/remoteEntry.js`
-
-- **Refresh shows `/assets/...` 404 from `localhost:5173`**
-  - This means a remote's preload URLs are resolving against host origin instead of remote origin.
-  - Make sure remote dev scripts include `VITE_REMOTE_BASE=http://localhost:<remote-port>/`.
-  - Restart all dev servers after script/config updates.
 
 - **Token issues after resets**
   - SpaceTraders resets can invalidate prior tokens.
